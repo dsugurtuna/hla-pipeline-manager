@@ -22,6 +22,7 @@ Running imputation on 50,000+ samples involves generating terabytes of data acro
 ## 🚀 Key Features
 
 *   **✅ Automated Verification**: Checks file existence, non-zero size, and internal content (e.g., "Are there actually HLA alleles in this file?") for thousands of batches in seconds.
+*   **⚡ HPC Optimized**: Includes `execute_batch_imputation.sh`, a production-ready script for Slurm/SGE environments that handles module loading, legacy tool patching (SNP2HLA/Plink 1.9), and parallel execution.
 *   **🛡️ Safe Deployment**: Implements a "Backup-First" strategy. Existing production data is automatically archived before new data is copied, ensuring zero data loss.
 *   **🔍 Rapid Cohort Selection**: Uses optimized `awk` processing to filter massive dosage files for specific alleles (e.g., `HLA_DRB1*04:01`) against a target participant list.
 *   **📉 Error Reporting**: Provides detailed, actionable error logs (e.g., "Batch 26, Sub-batch 12 failed: No R2 values found").
@@ -33,6 +34,8 @@ Running imputation on 50,000+ samples involves generating terabytes of data acro
 ├── check_hla_imputation_status.sh  # 🕵️ QC: Verifies batch integrity
 ├── deploy_hla_results.sh           # 🚀 Ops: Safely deploys to production
 ├── find_hla_participants.sh        # 🔍 Query: Finds allele carriers
+├── execute_batch_imputation.sh     # ⚡ HPC: Production execution script
+├── locate_array_mapping_file.sh    # 🗺️ Setup: Finds metadata mapping
 └── README.md                       # 📖 Documentation
 ```
 
