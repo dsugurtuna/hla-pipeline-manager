@@ -109,7 +109,8 @@ class ResultDeployer:
             report.files_backed_up = [f.name for f in backup_dir.iterdir()]
 
         # Deploy
-        self.target_dir.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            self.target_dir.mkdir(parents=True, exist_ok=True)
         for f in files_to_deploy:
             if not dry_run:
                 shutil.copy2(f, self.target_dir / f.name)
