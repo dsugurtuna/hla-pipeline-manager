@@ -1,69 +1,90 @@
-# HLA Pipeline Manager 🧬
+# HLA Pipeline Manager
 
-[![Bash](https://img.shields.io/badge/Language-Bash-blue.svg)](https://www.gnu.org/software/bash/)
-[![Bioinformatics](https://img.shields.io/badge/Domain-Bioinformatics-green.svg)]()
+[![CI](https://github.com/dsugurtuna/hla-pipeline-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/hla-pipeline-manager/actions)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
 [![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
 
-**End-to-End Orchestration for High-Throughput HLA Imputation Pipelines.**
+End-to-end HLA imputation pipeline orchestration — batch execution, verification, safe deployment, and clinical report generation.
 
-> **Note:** This repository contains sanitized versions of scripts developed during my tenure at **NIHR BioResource**. They are presented here for **educational and portfolio purposes only** to demonstrate proficiency in pipeline orchestration, data deployment, and cohort selection. No real patient data or internal infrastructure paths are included.
-
-The **HLA Pipeline Manager** is a suite of operational scripts designed to manage the lifecycle of large-scale HLA imputation tasks. It handles everything from verifying the integrity of thousands of sub-batches to safely deploying final datasets and querying them for specific immunogenetic profiles.
+> **Portfolio disclaimer:** This repository contains sanitised, generalised versions of tooling developed at NIHR BioResource. No real participant data or internal paths are included.
 
 ---
 
-## 🌟 Use Case: Operational Excellence
+## Overview
 
-Running imputation on 50,000+ samples involves generating terabytes of data across thousands of small files. A Data Manager needs tools to:
-1.  **Verify**: Did all 5,000 sub-jobs finish successfully? (`check_hla_imputation_status.sh`)
-2.  **Deploy**: How do we move new data to production without breaking existing access? (`deploy_hla_results.sh`)
-3.  **Query**: How do we quickly find patients with a specific risk allele for a new study? (`find_hla_participants.sh`)
+Running HLA imputation on 50,000+ samples produces thousands of sub-batch output files. This toolkit manages the full lifecycle:
 
-## 🚀 Key Features
+- **Batch executor** — chromosome filtering, AX→rs ID renaming, MHC-region extraction, sub-batch splitting, SNP2HLA orchestration.
+- **Imputation verifier** — checks .bed/.bim/.fam/.dosage/.bgl.r2/.bgl.log presence, HLA marker counts, and Beagle completion.
+- **Safe deployer** — backup-first strategy with automatic timestamped archiving before production copy.
+- **Clinical reporter** — genotype calling from dosage data with homozygous/heterozygous/negative classification and CSV export.
 
-*   **✅ Automated Verification**: Checks file existence, non-zero size, and internal content (e.g., "Are there actually HLA alleles in this file?") for thousands of batches in seconds.
-*   **⚡ HPC Optimized**: Includes `execute_batch_imputation.sh`, a production-ready script for Slurm/SGE environments that handles module loading, legacy tool patching (SNP2HLA/Plink 1.9), and parallel execution.
-*   **🛡️ Safe Deployment**: Implements a "Backup-First" strategy. Existing production data is automatically archived before new data is copied, ensuring zero data loss.
-*   **🔍 Rapid Cohort Selection**: Uses optimized `awk` processing to filter massive dosage files for specific alleles (e.g., `HLA_DRB1*04:01`) against a target participant list.
-*   **📉 Error Reporting**: Provides detailed, actionable error logs (e.g., "Batch 26, Sub-batch 12 failed: No R2 values found").
-
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 .
-├── check_hla_imputation_status.sh  # 🕵️ QC: Verifies batch integrity
-├── deploy_hla_results.sh           # 🚀 Ops: Safely deploys to production
-├── find_hla_participants.sh        # 🔍 Query: Finds allele carriers
-├── execute_batch_imputation.sh     # ⚡ HPC: Production execution script
-├── locate_array_mapping_file.sh    # 🗺️ Setup: Finds metadata mapping
-└── README.md                       # 📖 Documentation
+├── src/hla_pipeline/               Python package
+│   ├── __init__.py
+│   ├── executor.py                 Batch imputation executor
+│   ├── verifier.py                 Output verification engine
+│   ├── deployer.py                 Safe deployment with backup
+│   └── reporter.py                 Clinical genotype reporter
+├── tests/
+│   ├── test_executor.py
+│   ├── test_verifier.py
+│   ├── test_deployer.py
+│   └── test_reporter.py
+├── legacy/                         Original shell scripts
+├── .github/workflows/ci.yml
+├── pyproject.toml
+├── Dockerfile
+└── Makefile
 ```
 
-## 🛠️ Usage
+## Quick Start
 
-### 1. Verify a Run
-Check if your imputation run completed successfully:
 ```bash
-./check_hla_imputation_status.sh
+pip install -e ".[dev]"
 ```
-*Output:*
-> Batch 26 Status: SUCCESS
-> All 120 expected sub-batches appear valid.
 
-### 2. Deploy Results
-Move verified files to the release directory (with auto-backup):
+### Python API
+
+```python
+from hla_pipeline import BatchExecutor, ImputationVerifier, ResultDeployer, ClinicalReporter
+
+# Execute batch imputation
+executor = BatchExecutor()
+result = executor.execute_batch("B001", "batch.fam", "/work/")
+print(f"{result.sub_batches} sub-batches, {result.success_rate:.0%} success")
+
+# Verify outputs
+verifier = ImputationVerifier()
+report = verifier.verify_batch("/output/batch_001/")
+print(verifier.format_report(report))
+
+# Deploy safely
+deployer = ResultDeployer("/production/hla/")
+report = deployer.deploy("/staging/batch_001/")
+print(f"Deployed {report.deployment_count} files, backup at {report.backup_dir}")
+
+# Generate clinical report
+reporter = ClinicalReporter()
+report = reporter.generate_report("dosage.raw", "HLA_DRB1_0101")
+reporter.export_csv(report, "clinical_report.csv")
+```
+
+## Testing
+
 ```bash
-./deploy_hla_results.sh
+make test   # or: pytest tests/ -v
 ```
 
-### 3. Find Participants
-Find all participants in your study list who carry `HLA_DRB1_0401`:
-```bash
-./find_hla_participants.sh HLA_DRB1_0401 my_study_ids.txt
-```
+## Jira Provenance
 
-## 🤝 Contributing
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+- **HLA imputation pipeline** — full SNP2HLA/CookHLA orchestration across Cambridge HPC.
+- **Batch verification** — validating completeness of thousands of sub-batch outputs.
+- **Clinical reporting** — genotype calling and deliverable CSV generation for clinical teams.
 
----
-*Developed to streamline immunogenetics operations and ensure data reliability.*
+## Licence
+
+MIT
