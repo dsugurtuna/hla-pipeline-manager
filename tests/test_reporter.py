@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from hla_pipeline.reporter import ClinicalReporter, ClinicalReport
+from hla_pipeline.reporter import ClinicalReporter
 
 
 @pytest.fixture()

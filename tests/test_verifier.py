@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from hla_pipeline.verifier import ImputationVerifier, SubBatchStatus
+from hla_pipeline.verifier import ImputationVerifier
 
 
 @pytest.fixture()
