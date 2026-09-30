@@ -21,7 +21,7 @@ set -e
 
 # --- Configuration ---
 BATCH_ID="b09"
-BASE_DIR="./data/processed/CBR146"
+BASE_DIR="./data/processed/STUDY_A"
 WORK_DIR="${BASE_DIR}/${BATCH_ID}_imputation_work"
 REF_PANEL="./data/references/HLA/HM_CEU_REF"
 SNP2HLA_SRC="./data/tools/SNP2HLA_package_v1.0.2"

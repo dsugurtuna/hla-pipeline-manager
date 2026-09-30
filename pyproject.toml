@@ -5,14 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hla-pipeline-manager"
 version = "2.0.0"
-description = "End-to-end HLA imputation pipeline orchestration."
+description = "Plan, verify and deploy SNP2HLA imputation batches."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = {text = "MIT"}
+authors = [{name = "Ugur Tuna"}]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff"]
+dev = ["pytest>=8.0", "ruff==0.16.9", "mypy>=1.11"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -21,4 +22,15 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
+line-length = 88
+# legacy/ holds the original shell scripts, kept as published for reference.
+extend-exclude = ["legacy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true

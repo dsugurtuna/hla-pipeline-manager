@@ -92,11 +92,11 @@ rm -f "${FILTERED_PREFIX}".* "${RENAMED_PREFIX}".* "${MHC_PREFIX}".* plink.log
 # 2. Filter Chromosomes
 log "Step 2: Filtering Chromosomes (1-22, X, Y, MT)"
 # Note: In a real scenario, ensure input files exist.
-# $PLINK_EXEC --bfile "${INPUT_DIR}/UKBBAffy_SAX_${BATCH_NAME}" ...
+# $PLINK_EXEC --bfile "${INPUT_DIR}/ARRAY_A_${BATCH_NAME}" ...
 # For portfolio demonstration, we simulate the command or assume inputs exist.
 
-if [ -f "${INPUT_DIR}/UKBBAffy_SAX_${BATCH_NAME}.bed" ]; then
-    $PLINK_EXEC --bfile "${INPUT_DIR}/UKBBAffy_SAX_${BATCH_NAME}" \
+if [ -f "${INPUT_DIR}/ARRAY_A_${BATCH_NAME}.bed" ]; then
+    $PLINK_EXEC --bfile "${INPUT_DIR}/ARRAY_A_${BATCH_NAME}" \
         --allow-extra-chr --chr 1-22,X,Y,MT \
         --make-bed --out "${FILTERED_PREFIX}" > /dev/null
 else

@@ -13,10 +13,10 @@
 KNOWN_AX_ID="AX-13216142"
 
 # The root directory of the raw Affymetrix data
-SEARCH_DIR="./data/raw/Affy-BIOAXIOMAX"
+SEARCH_DIR="./data/raw/array_v1"
 
 echo "################################################################"
-echo "### Searching for the UKBBv1.0 (AX-to-rs) mapping file"
+echo "### Searching for the array_v1 (AX-to-rs) mapping file"
 echo "################################################################"
 echo "Target ID: ${KNOWN_AX_ID}"
 echo "Search Path: ${SEARCH_DIR}"
@@ -27,7 +27,7 @@ if [ ! -d "${SEARCH_DIR}" ]; then
     echo "[Simulation] Search directory not found locally."
     echo "Creating mock directory and file for demonstration..."
     mkdir -p "${SEARCH_DIR}"
-    echo "AX-13216142,rs123456" > "${SEARCH_DIR}/UKBB_Mapping_v1.csv"
+    echo "AX-13216142,rs123456" > "${SEARCH_DIR}/array_v1_mapping.csv"
 fi
 
 echo "--- Searching for '${KNOWN_AX_ID}' in all .csv, .txt, and .annot files ---"
