@@ -52,7 +52,7 @@ for argv in plan.commands:
     print(" ".join(argv))
 ```
 
-To run a plan for real, call `execute_batch(..., dry_run=False)` on a machine with PLINK 1.9, Java and SNP2HLA installed.
+To run a plan for real, call `execute_batch(..., dry_run=False)` on a machine with PLINK 1.9, Java and SNP2HLA installed. I ran the PLINK steps of a plan with PLINK v1.90b7.2 on synthetic chromosome 6 data (region extraction, `--update-name` renaming and `--keep` sub-batches all behaved as planned); SNP2HLA itself was not run here.
 
 ## How it works
 
