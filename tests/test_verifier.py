@@ -53,7 +53,7 @@ def test_log_without_completion_marker(tmp_path: Path) -> None:
     _write_outputs(prefix, log="java.lang.OutOfMemoryError\n")
     status = ImputationVerifier().verify_sub_batch(prefix)
     assert not status.beagle_completed
-    assert not status.is_complete
+    assert status.problems == ["no completion line in Beagle log"]
 
 
 def test_dotted_prefix(tmp_path: Path) -> None:

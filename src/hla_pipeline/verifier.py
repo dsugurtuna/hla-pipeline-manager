@@ -45,20 +45,24 @@ class SubBatchStatus:
     beagle_completed: bool = False
 
     @property
+    def problems(self) -> list[str]:
+        """Human-readable reasons this sub-batch is incomplete (empty if none)."""
+        checks = [
+            (self.has_bed, "missing or empty .bed"),
+            (self.has_bim, "missing or empty .bim"),
+            (self.has_fam, "missing or empty .fam"),
+            (self.has_dosage, "missing or empty .dosage"),
+            (self.has_r2, "missing or empty .bgl.r2"),
+            (self.has_log, "missing or empty .bgl.log"),
+            (self.hla_marker_count > 0, "no HLA markers in .bim"),
+            (self.hla_r2_count > 0, "no HLA markers in .bgl.r2"),
+            (self.beagle_completed, "no completion line in Beagle log"),
+        ]
+        return [message for ok, message in checks if not ok]
+
+    @property
     def is_complete(self) -> bool:
-        return all(
-            [
-                self.has_bed,
-                self.has_bim,
-                self.has_fam,
-                self.has_dosage,
-                self.has_r2,
-                self.has_log,
-                self.hla_marker_count > 0,
-                self.hla_r2_count > 0,
-                self.beagle_completed,
-            ]
-        )
+        return not self.problems
 
 
 @dataclass
@@ -199,4 +203,5 @@ class ImputationVerifier:
                     f"  {s.name}: {state}  (HLA markers in .bim: "
                     f"{s.hla_marker_count}, in .bgl.r2: {s.hla_r2_count})"
                 )
+                lines.extend(f"    - {problem}" for problem in s.problems)
         return "\n".join(lines)

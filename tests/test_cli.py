@@ -39,6 +39,7 @@ def test_verify_flags_incomplete_example(capsys: pytest.CaptureFixture[str]) -> 
     assert code == 1
     assert "sub_batch_001_imputed: OK" in out
     assert "sub_batch_002_imputed: INCOMPLETE" in out
+    assert "- missing or empty .bgl.log" in out
 
 
 def test_report_snp2hla(capsys: pytest.CaptureFixture[str]) -> None:
