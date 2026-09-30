@@ -258,6 +258,8 @@ class BatchExecutor:
         # defines the sub-batches before any tool has run.
         keep_files = self.split_fam(fam, work / "keep")
         sub_dir = work / "sub_batches"
+        # PLINK does not create missing output directories.
+        sub_dir.mkdir(parents=True, exist_ok=True)
         for keep in keep_files:
             name = keep.stem
             sub_prefix = str(sub_dir / name)

@@ -40,6 +40,8 @@ def test_plan_extracts_mhc_then_sub_batches(bfile: Path, tmp_path: Path) -> None
     assert extract[extract.index("--from-bp") + 1] == "26000000"
     assert extract[extract.index("--to-bp") + 1] == "34000000"
     assert list(plan.sub_batch_steps) == ["sub_batch_001", "sub_batch_002"]
+    # PLINK will not create --out directories itself.
+    assert (tmp_path / "work" / "sub_batches").is_dir()
 
 
 def test_rename_step_uses_update_name_columns(bfile: Path, tmp_path: Path) -> None:
