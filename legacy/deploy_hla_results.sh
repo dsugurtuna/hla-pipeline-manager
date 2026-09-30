@@ -37,7 +37,7 @@ for BATCH_ID in "${BATCH_LIST[@]}"; do
     echo "--- Processing Batch ${BATCH_ID} ---"
 
     WORK_DIR="${BASE_DIR}/batch_${BATCH_ID}_hla_revised"
-    FINAL_PREFIX="${FINAL_DIR}/UKBBAffy_SAX_b${BATCH_ID}-HLA"
+    FINAL_PREFIX="${FINAL_DIR}/ARRAY_A_b${BATCH_ID}-HLA"
     MERGED_PREFIX="${WORK_DIR}/b${BATCH_ID}_imputed_merged"
 
     # Check if new merged files exist
@@ -49,7 +49,7 @@ for BATCH_ID in "${BATCH_LIST[@]}"; do
     # --- Step 1: Backup Existing Files ---
     echo "  Step 1: Backing up existing files..."
     # Use find to move only existing files, avoid errors if some don't exist
-    find "${FINAL_DIR}" -maxdepth 1 -type f -name "UKBBAffy_SAX_b${BATCH_ID}-HLA.*" -exec mv {} "${BACKUP_DIR}/" \;
+    find "${FINAL_DIR}" -maxdepth 1 -type f -name "ARRAY_A_b${BATCH_ID}-HLA.*" -exec mv {} "${BACKUP_DIR}/" \;
     echo "  Existing files moved to backup."
 
     # --- Step 2: Copy New Files ---

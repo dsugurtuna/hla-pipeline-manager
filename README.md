@@ -104,12 +104,6 @@ One of a set of tools from biobank genomic data provisioning. Before imputation:
 - Record tool versions and input checksums in a run manifest.
 - Support CookHLA output alongside SNP2HLA.
 
-## Jira Provenance
-
-- **HLA imputation pipeline** — full SNP2HLA/CookHLA orchestration across Cambridge HPC.
-- **Batch verification** — validating completeness of thousands of sub-batch outputs.
-- **Clinical reporting** — genotype calling and deliverable CSV generation for clinical teams.
-
 ## Licence
 
 MIT is declared in `pyproject.toml`, but no licence file is included yet.

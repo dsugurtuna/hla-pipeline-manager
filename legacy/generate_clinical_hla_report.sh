@@ -34,37 +34,41 @@ FINAL_REPORT="${OUTPUT_DIR}/Final_HLA_Report_DELIVERABLE.csv"
 # Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"
 
-# --- Participant Data Definitions (Sanitized) ---
+# --- Participant Data Definitions (synthetic placeholders) ---
 # Associative array mapping ParticipantID to metadata string.
-# Format: [ParticipantID]="VariantID;BatchID;FamilyID_ArrayID"
-# Note: Real IDs have been replaced with generic placeholders.
+# Format: [ParticipantID]="VariantID;BatchID;SampleID_Well"
+# All IDs, batches and wells below are synthetic placeholders.
 declare -A P_DATA
 P_DATA=(
-    ["P001_REF"]="V_REF_001;b18;Sample_Ref_01_Array_H03"
-    ["P002_TEST"]="V_TEST_002;b06;Sample_Test_02_Array_B02"
-    ["P003_TEST"]="V_TEST_003;b09;Sample_Test_03_Array_H07"
-    ["P004_TEST"]="V_TEST_004;b11;Sample_Test_04_Array_E07"
-    ["P005_TEST"]="V_TEST_005;b04;Sample_Test_05_Array_E02"
+    ["SAMPLE_001"]="V_001;b01;SAMPLE_001_A01"
+    ["SAMPLE_002"]="V_002;b01;SAMPLE_002_A02"
+    ["SAMPLE_003"]="V_003;b02;SAMPLE_003_A03"
+    ["SAMPLE_004"]="V_004;b02;SAMPLE_004_A04"
+    ["SAMPLE_005"]="V_005;b03;SAMPLE_005_A05"
 )
+
+# Example allele calls used for the simulated rows. These are placeholder
+# values that show the output format; they are not any real sample's HLA type.
+EXAMPLE_HLA="HLA-A*XX:XX/HLA-A*YY:YY,HLA-B*XX:XX/HLA-B*YY:YY,HLA-C*XX:XX/HLA-C*YY:YY,HLA-DPA1*XX:XX/HLA-DPA1*YY:YY,HLA-DPB1*XX:XX/HLA-DPB1*YY:YY,HLA-DQA1*XX:XX/HLA-DQA1*YY:YY,HLA-DQB1*XX:XX/HLA-DQB1*YY:YY,HLA-DRB1*XX:XX/HLA-DRB1*YY:YY"
 
 # --- Create final report with header ---
 echo "V_ID,Participant_ID,Data_Source,Batch,HLA_A,HLA_B,HLA_C,HLA_DPA1,HLA_DPB1,HLA_DQA1,HLA_DQB1,HLA_DRB1" > "$FINAL_REPORT"
 
 # --- 1. External Method Integration (Example: CookHLA) ---
 # Demonstrates how to merge results from different calling algorithms (e.g., for validation)
-echo "Processing External Reference Sample (P001_REF)..."
+echo "Processing External Reference Sample (SAMPLE_001)..."
 
 # Simulating the parsing of an external tool's output format
 # In the original script, this parsed a specific .alleles file format
-# COOKHLA_RESULTS=$(grep "$ARRAY_ID_B18" "$COOKHLA_FILE" || true)
+# COOKHLA_RESULTS=$(grep "$SAMPLE_ID" "$COOKHLA_FILE" || true)
 
-# For portfolio demonstration, we inject the parsed result directly to show the data structure
+# For portfolio demonstration, we inject a placeholder result to show the data structure
 # This represents a sample where we trust an external caller (CookHLA) over the pipeline
-echo "V_REF_001,P001_REF,CookHLA_b18,b18,HLA-A*01:01/HLA-A*02:01,HLA-B*07:02/HLA-B*08:01,HLA-C*07:02/HLA-C*07:02,HLA-DPA1*01:03/HLA-DPA1*01:03,HLA-DPB1*04:01/HLA-DPB1*04:01,HLA-DQA1*01:02/HLA-DQA1*05:01,HLA-DQB1*02:01/HLA-DQB1*06:02,HLA-DRB1*03:01/HLA-DRB1*15:01" >> "$FINAL_REPORT"
+echo "V_001,SAMPLE_001,CookHLA_b01,b01,${EXAMPLE_HLA}" >> "$FINAL_REPORT"
 
 # --- 2. Process All Imputed Batches (SNP2HLA) ---
 for PID in "${!P_DATA[@]}"; do
-    if [[ "$PID" == "P001_REF" ]]; then continue; fi # Skip the one handled above
+    if [[ "$PID" == "SAMPLE_001" ]]; then continue; fi # Skip the one handled above
     
     IFS=';' read -r VID BATCH FAM_ID <<< "${P_DATA[$PID]}"
     echo "Parsing results for $VID ($PID) from batch $BATCH..."
@@ -80,7 +84,7 @@ for PID in "${!P_DATA[@]}"; do
     if [ ! -f "$DOS_FILE" ] || [ ! -f "$R2_FILE" ]; then
         echo "   [Simulated] Input files not found locally. Generating mock entry for demonstration."
         # Generate a plausible mock entry to show what the output looks like
-        echo "$VID,$PID,Imputed_SNP2HLA,$BATCH,HLA-A*02:01/HLA-A*03:01,HLA-B*07:02/HLA-B*44:02,HLA-C*05:01/HLA-C*07:02,HLA-DPA1*01:03/HLA-DPA1*02:01,HLA-DPB1*04:01/HLA-DPB1*04:02,HLA-DQA1*01:02/HLA-DQA1*05:05,HLA-DQB1*03:01/HLA-DQB1*06:02,HLA-DRB1*04:01/HLA-DRB1*11:01" >> "$FINAL_REPORT"
+        echo "$VID,$PID,Imputed_SNP2HLA,$BATCH,${EXAMPLE_HLA}" >> "$FINAL_REPORT"
         continue
     fi
 
