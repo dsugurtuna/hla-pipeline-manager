@@ -50,7 +50,12 @@ pip install -e ".[dev]"
 ### Python API
 
 ```python
-from hla_pipeline import BatchExecutor, ImputationVerifier, ResultDeployer, ClinicalReporter
+from hla_pipeline import (
+    BatchExecutor,
+    ImputationVerifier,
+    ResultDeployer,
+    ClinicalReporter,
+)
 
 # Execute batch imputation
 executor = BatchExecutor()
