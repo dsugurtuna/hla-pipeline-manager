@@ -27,7 +27,7 @@ HLA imputation of a large cohort is thousands of small SNP2HLA runs, and any one
 ## Questions worth asking
 
 **"How do you know an imputed allele is right, not just present?"**
-This package does not. It checks that outputs are structurally complete and reports each marker's Beagle r2, which estimates imputation quality from the posterior probabilities. Accuracy needs samples with lab HLA typing to compare against; that is a separate validation step and should be done per reference panel and per ancestry group.
+This package does not. It checks that outputs are structurally complete and reports each marker's Beagle r2, which is Beagle's own estimate of the squared correlation between the imputed and the true allele dosage. Accuracy needs samples with lab HLA typing to compare against; that is a separate validation step and should be done per reference panel and per ancestry group.
 
 **"Why hard calls at 0.5 and 1.5? Doesn't that throw away uncertainty?"**
 Yes. The thresholds turn an expected allele count into a carrier list, which is what a recall study or look-up needs. For association analysis you should use the dosages directly. The report keeps the dosage and the r2 next to each call so a reader can see borderline cases.
