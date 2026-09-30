@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
 
 
 @dataclass
@@ -28,18 +27,25 @@ class SubBatchStatus:
 
     @property
     def is_complete(self) -> bool:
-        return all([
-            self.has_bed, self.has_bim, self.has_fam,
-            self.has_dosage, self.has_r2, self.has_log,
-            self.hla_marker_count > 0, self.beagle_completed,
-        ])
+        return all(
+            [
+                self.has_bed,
+                self.has_bim,
+                self.has_fam,
+                self.has_dosage,
+                self.has_r2,
+                self.has_log,
+                self.hla_marker_count > 0,
+                self.beagle_completed,
+            ]
+        )
 
 
 @dataclass
 class VerificationReport:
     """Verification report for one or more batches."""
 
-    batch_statuses: Dict[str, List[SubBatchStatus]] = field(default_factory=dict)
+    batch_statuses: dict[str, list[SubBatchStatus]] = field(default_factory=dict)
 
     @property
     def total_sub_batches(self) -> int:
@@ -48,8 +54,7 @@ class VerificationReport:
     @property
     def complete_sub_batches(self) -> int:
         return sum(
-            1 for subs in self.batch_statuses.values()
-            for s in subs if s.is_complete
+            1 for subs in self.batch_statuses.values() for s in subs if s.is_complete
         )
 
     @property
@@ -129,7 +134,7 @@ class ImputationVerifier:
         batch_dir = Path(batch_dir)
         bid = batch_id or batch_dir.name
         report = VerificationReport()
-        sub_statuses: List[SubBatchStatus] = []
+        sub_statuses: list[SubBatchStatus] = []
 
         for fam in sorted(batch_dir.glob("*.fam")):
             prefix = fam.with_suffix("")
@@ -153,5 +158,7 @@ class ImputationVerifier:
             lines.append(f"Batch: {batch}")
             for s in subs:
                 status = "OK" if s.is_complete else "INCOMPLETE"
-                lines.append(f"  {s.name}: {status}  (HLA markers: {s.hla_marker_count})")
+                lines.append(
+                    f"  {s.name}: {status}  (HLA markers: {s.hla_marker_count})"
+                )
         return "\n".join(lines)

@@ -29,7 +29,7 @@ class TestResultDeployer:
     def test_deploy_with_backup(self, source_dir: Path, tmp_path: Path) -> None:
         target = tmp_path / "production"
         target.mkdir()
-        (target / "old.bed").write_bytes(b"\xFF")
+        (target / "old.bed").write_bytes(b"\xff")
         deployer = ResultDeployer(target, backup_root=tmp_path / "backups")
         report = deployer.deploy(source_dir)
         assert report.deployment_count == 3

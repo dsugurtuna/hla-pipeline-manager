@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
 
 
 @dataclass
@@ -20,7 +19,7 @@ class ExecutionResult:
     sub_batches: int = 0
     completed: int = 0
     failed: int = 0
-    log_files: List[str] = field(default_factory=list)
+    log_files: list[str] = field(default_factory=list)
 
     @property
     def success_rate(self) -> float:
@@ -73,7 +72,7 @@ class BatchExecutor:
         fam_path: str | Path,
         output_dir: str | Path,
         batch_size: int | None = None,
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Split a .fam file into sub-batches.
 
         Returns list of sub-batch .fam file paths.
@@ -82,11 +81,11 @@ class BatchExecutor:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        samples: List[str] = []
+        samples: list[str] = []
         with open(fam_path) as fh:
             samples = [line.strip() for line in fh if line.strip()]
 
-        sub_batches: List[Path] = []
+        sub_batches: list[Path] = []
         for i in range(0, len(samples), batch_size):
             chunk = samples[i : i + batch_size]
             sub_path = output_dir / f"sub_batch_{i // batch_size + 1:03d}.fam"
@@ -100,11 +99,11 @@ class BatchExecutor:
         mapping_path: str | Path,
         ax_col: str = "probesetid",
         rs_col: str = "rsid",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Build an AX → rs ID rename map from an annotation file."""
         import csv
 
-        rename: Dict[str, str] = {}
+        rename: dict[str, str] = {}
         with open(mapping_path, newline="") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
@@ -119,7 +118,7 @@ class BatchExecutor:
         input_prefix: str,
         output_prefix: str,
         sub_batch_fam: str | Path,
-    ) -> List[str]:
+    ) -> list[str]:
         """Construct the SNP2HLA command for a single sub-batch."""
         return [
             self.config.snp2hla_path,

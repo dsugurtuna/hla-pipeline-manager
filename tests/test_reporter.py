@@ -11,10 +11,7 @@ from hla_pipeline.reporter import ClinicalReporter
 def dosage_file(tmp_path: Path) -> Path:
     p = tmp_path / "dosage.raw"
     p.write_text(
-        "FID\tIID\tHLA_DRB1_0101\n"
-        "S001\tS001\t1.8\n"
-        "S002\tS002\t0.9\n"
-        "S003\tS003\t0.1\n"
+        "FID\tIID\tHLA_DRB1_0101\nS001\tS001\t1.8\nS002\tS002\t0.9\nS003\tS003\t0.1\n"
     )
     return p
 

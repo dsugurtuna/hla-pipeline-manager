@@ -10,7 +10,6 @@ import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 
 @dataclass
@@ -20,8 +19,8 @@ class DeploymentReport:
     source_dir: str
     target_dir: str
     backup_dir: str = ""
-    files_deployed: List[str] = field(default_factory=list)
-    files_backed_up: List[str] = field(default_factory=list)
+    files_deployed: list[str] = field(default_factory=list)
+    files_backed_up: list[str] = field(default_factory=list)
     verified: bool = False
 
     @property
@@ -51,7 +50,7 @@ class ResultDeployer:
         self,
         target_dir: str | Path,
         backup_root: str | Path | None = None,
-        extensions: List[str] | None = None,
+        extensions: list[str] | None = None,
     ) -> None:
         self.target_dir = Path(target_dir)
         self.backup_root = (
@@ -65,7 +64,7 @@ class ResultDeployer:
         backup_dir = self.backup_root / ts
         backup_dir.mkdir(parents=True, exist_ok=True)
 
-        backed_up: List[str] = []
+        backed_up: list[str] = []
         for ext in self.extensions:
             for f in self.target_dir.glob(f"*{ext}"):
                 dest = backup_dir / f.name
@@ -95,7 +94,7 @@ class ResultDeployer:
         )
 
         # Identify files to deploy
-        files_to_deploy: List[Path] = []
+        files_to_deploy: list[Path] = []
         for ext in self.extensions:
             files_to_deploy.extend(source.glob(f"*{ext}"))
 

@@ -2,10 +2,10 @@
 
 __version__ = "2.0.0"
 
+from .deployer import DeploymentReport, ResultDeployer
 from .executor import BatchExecutor, ExecutionResult
+from .reporter import ClinicalReport, ClinicalReporter
 from .verifier import ImputationVerifier, VerificationReport
-from .deployer import ResultDeployer, DeploymentReport
-from .reporter import ClinicalReporter, ClinicalReport
 
 __all__ = [
     "BatchExecutor",

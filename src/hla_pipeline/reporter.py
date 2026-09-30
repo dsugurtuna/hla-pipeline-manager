@@ -9,7 +9,6 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -20,7 +19,7 @@ class ParticipantGenotype:
     allele: str
     dosage: float
     call: str  # "homozygous", "heterozygous", "negative"
-    r2_score: Optional[float] = None
+    r2_score: float | None = None
 
 
 @dataclass
@@ -28,7 +27,7 @@ class ClinicalReport:
     """A deliverable clinical HLA report."""
 
     allele: str
-    genotypes: List[ParticipantGenotype] = field(default_factory=list)
+    genotypes: list[ParticipantGenotype] = field(default_factory=list)
 
     @property
     def carrier_count(self) -> int:
@@ -75,7 +74,7 @@ class ClinicalReporter:
         dosage_path: str | Path,
         allele_column: str,
         sample_col: str = "IID",
-        r2_scores: Optional[Dict[str, float]] = None,
+        r2_scores: dict[str, float] | None = None,
     ) -> ClinicalReport:
         """Generate a clinical report from a dosage file.
 
@@ -120,7 +119,12 @@ class ClinicalReporter:
             writer = csv.writer(fh)
             writer.writerow(["participant_id", "allele", "dosage", "call", "r2_score"])
             for g in report.genotypes:
-                writer.writerow([
-                    g.participant_id, g.allele, f"{g.dosage:.4f}",
-                    g.call, g.r2_score or "",
-                ])
+                writer.writerow(
+                    [
+                        g.participant_id,
+                        g.allele,
+                        f"{g.dosage:.4f}",
+                        g.call,
+                        g.r2_score or "",
+                    ]
+                )
