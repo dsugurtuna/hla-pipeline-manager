@@ -95,7 +95,7 @@ flowchart LR
 
 ## Where this fits
 
-Part of a curated set of public clinical genomics and health-data reference architectures, alongside [genomic-cohort-delivery-pipeline](https://github.com/dsugurtuna/genomic-cohort-delivery-pipeline) (multi-batch PLINK cohort assembly and verified delivery) and [gut-reaction-platform](https://github.com/dsugurtuna/gut-reaction-platform) (clinical research platform reference architecture).
+Part of a curated set of public clinical genomics and health-data reference architectures, alongside [genomic-cohort-delivery-pipeline](https://github.com/dsugurtuna/genomic-cohort-delivery-pipeline) (multi-batch PLINK cohort assembly and verified delivery) and [clinical-cohort-ai-platform](https://github.com/dsugurtuna/clinical-cohort-ai-platform) (clinical research platform reference architecture).
 
 ## Roadmap
 
@@ -105,7 +105,7 @@ Part of a curated set of public clinical genomics and health-data reference arch
 
 ## Licence
 
-MIT is declared in `pyproject.toml`, but no licence file is included yet.
+MIT. See [LICENSE](LICENSE).
 
 ---
 
