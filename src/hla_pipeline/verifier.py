@@ -3,20 +3,34 @@
 Checks each SNP2HLA sub-batch output (``<prefix>.bed/.bim/.fam/.dosage/
 .bgl.r2/.bgl.log``) for presence, non-empty content, HLA allele markers in
 the .bim and .bgl.r2 files, and a Beagle completion line in the log. These
-are the same checks the original shell script made, in testable form.
+replace traditional shell wrapper checks in structured, testable form.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 OUTPUT_SUFFIXES = (".bed", ".bim", ".fam", ".dosage", ".bgl.r2", ".bgl.log")
 
-# Heuristic end-of-run markers. The original script accepted "finished" or
-# "End time" near the end of the log; keep them configurable.
+# Heuristic end-of-run markers typical of Beagle logs ("finished", "completed",
+# "End time"); kept configurable for custom wrapper formats.
 DEFAULT_COMPLETION_MARKERS = ("finished", "completed", "end time")
+
+_ERROR_LOG_RE = re.compile(
+    r"(?:"
+    r"\bnot\s+(?:finished|completed)\b"
+    r"|\b(?:incomplete|unfinished|uncompleted)\b"
+    r"|\bcompleted\s+0\b"
+    r"|\bfinished\s+with\s+(?:[1-9]\d*\s+)?errors?\b"
+    r"|\b(?:fail(?:ed|ure)?|abort(?:ed)?|killed|terminated|fatal)\b"
+    r"|(?<!\bno\s)(?<!\b0\s)errors?\b"
+    r"|exceptions?\b"
+    r")",
+    re.IGNORECASE,
+)
 
 
 def _with_suffix(prefix: Path, suffix: str) -> Path:
@@ -97,10 +111,13 @@ class VerificationReport:
 
     @property
     def all_ok(self) -> bool:
-        """True when every sub-batch is complete and none are missing."""
+        """True when at least one sub-batch is verified, all complete, none missing."""
+        if self.total_sub_batches == 0:
+            return False
+        all_batches = set(self.batch_statuses) | set(self.expected_sub_batches)
         return all(
             s.is_complete for subs in self.batch_statuses.values() for s in subs
-        ) and not any(self.missing_sub_batches(b) for b in self.batch_statuses)
+        ) and not any(self.missing_sub_batches(b) for b in all_batches)
 
 
 class ImputationVerifier:
@@ -109,7 +126,13 @@ class ImputationVerifier:
     def __init__(
         self, completion_markers: Sequence[str] = DEFAULT_COMPLETION_MARKERS
     ) -> None:
-        self.completion_markers = tuple(m.lower() for m in completion_markers)
+        self.completion_markers = tuple(
+            " ".join(m.split()).lower() for m in completion_markers if m.strip()
+        )
+        self._completion_patterns = tuple(
+            re.compile(rf"(?<!\w){re.escape(marker)}(?!\w)", re.IGNORECASE)
+            for marker in self.completion_markers
+        )
 
     @staticmethod
     def _count_hla_markers(bim_path: Path) -> int:
@@ -129,11 +152,15 @@ class ImputationVerifier:
             return sum(1 for line in fh if line.startswith("HLA_"))
 
     def _check_beagle_log(self, log_path: Path, tail_lines: int = 20) -> bool:
-        """True if a completion marker appears in the last lines of the log."""
+        """True if a completion marker appears in the log tail without errors."""
         with open(log_path, errors="replace") as fh:
             tail = fh.readlines()[-tail_lines:]
-        text = "".join(tail).lower()
-        return any(marker in text for marker in self.completion_markers)
+        lines = [" ".join(line.split()).lower() for line in tail if line.strip()]
+        if not lines or any(_ERROR_LOG_RE.search(line) for line in lines):
+            return False
+        return any(
+            pat.search(line) for line in lines for pat in self._completion_patterns
+        )
 
     def verify_sub_batch(self, prefix: str | Path) -> SubBatchStatus:
         """Verify one sub-batch given its output prefix (no extension)."""
@@ -171,10 +198,14 @@ class ImputationVerifier:
         produced output at all.
         """
         batch_dir = Path(batch_dir)
+        if not batch_dir.is_dir():
+            raise NotADirectoryError(f"Batch directory not found: {batch_dir}")
+        if expected_sub_batches is not None and expected_sub_batches < 1:
+            raise ValueError("expected_sub_batches must be at least 1")
         bid = batch_id or batch_dir.name
         report = VerificationReport()
         report.batch_statuses[bid] = [
-            self.verify_sub_batch(d.with_suffix(""))
+            self.verify_sub_batch(Path(str(d).removesuffix(".dosage")))
             for d in sorted(batch_dir.glob("*.dosage"))
         ]
         if expected_sub_batches is not None:
@@ -197,6 +228,8 @@ class ImputationVerifier:
             missing = report.missing_sub_batches(batch)
             if missing:
                 lines.append(f"  MISSING: {missing} expected sub-batch(es) not found")
+            if not subs and not missing:
+                lines.append("  NO OUTPUTS: no *.dosage files found in directory")
             for s in subs:
                 state = "OK" if s.is_complete else "INCOMPLETE"
                 lines.append(

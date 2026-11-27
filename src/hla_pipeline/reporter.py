@@ -7,18 +7,21 @@ a CSV. Calls use fixed dosage thresholds on the expected count of the allele:
 - dosage >  0.5 -> heterozygous
 - otherwise     -> negative
 
-These are the thresholds the original scripts used. They are a convenience
-for listing carriers, not a clinical genotype: imputed dosages carry
+These are conventional dosage thresholds for carrier screening. They are a
+convenience for listing carriers, not a clinical genotype: imputed dosages carry
 uncertainty, which is why the marker's Beagle r2 is reported alongside.
 """
 
 from __future__ import annotations
 
 import csv
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .dosage import read_plink_raw, read_snp2hla_dosage
+
+_DOSAGE_TOLERANCE = 1e-4
 
 
 @dataclass
@@ -62,6 +65,14 @@ class ClinicalReporter:
         self.hetero_threshold = heterozygous_threshold
 
     def _call_genotype(self, dosage: float) -> str:
+        if (
+            not math.isfinite(dosage)
+            or dosage < -_DOSAGE_TOLERANCE
+            or dosage > 2.0 + _DOSAGE_TOLERANCE
+        ):
+            raise ValueError(
+                f"dosage must be finite and within [0.0, 2.0], got {dosage!r}"
+            )
         if dosage >= self.homo_threshold:
             return "homozygous"
         if dosage > self.hetero_threshold:
@@ -122,7 +133,9 @@ class ClinicalReporter:
     @staticmethod
     def export_csv(report: ClinicalReport, output_path: str | Path) -> None:
         """Write the report as CSV."""
-        with open(output_path, "w", newline="") as fh:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", newline="") as fh:
             writer = csv.writer(fh)
             writer.writerow(["participant_id", "allele", "dosage", "call", "r2_score"])
             for g in report.genotypes:

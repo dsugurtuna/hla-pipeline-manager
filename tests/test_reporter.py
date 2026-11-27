@@ -94,3 +94,58 @@ def test_r2_annotation(tmp_path: Path, dosage_file: Path) -> None:
 def test_invalid_thresholds() -> None:
     with pytest.raises(ValueError):
         ClinicalReporter(homozygous_threshold=0.4, heterozygous_threshold=0.5)
+
+
+def test_snp2hla_dosage_skips_na_values(tmp_path: Path) -> None:
+    dosage = tmp_path / "out.dosage"
+    fam = tmp_path / "out.fam"
+    fam.write_text("F1 S1 0 0 1 -9\nF2 S2 0 0 2 -9\nF3 S3 0 0 1 -9\n")
+    dosage.write_text("HLA_DRB1_0401\tP\tA\t1.950\tNA\tna\n")
+    assert read_snp2hla_dosage(dosage, fam, "HLA_DRB1_0401") == {"S1": 1.95}
+
+
+def test_dosage_readers_reject_non_finite(tmp_path: Path) -> None:
+    raw = tmp_path / "bad.raw"
+    raw.write_text(
+        "FID IID PAT MAT SEX PHENOTYPE HLA_DRB1_0401_P\nF1 S1 0 0 1 -9 NaN\n"
+    )
+    with pytest.raises(ValueError, match="non-finite"):
+        read_plink_raw(raw, "HLA_DRB1_0401")
+
+    dosage = tmp_path / "bad.dosage"
+    fam = tmp_path / "bad.fam"
+    fam.write_text("F1 S1 0 0 1 -9\n")
+    dosage.write_text("HLA_DRB1_0401\tP\tA\tinf\n")
+    with pytest.raises(ValueError, match="non-finite"):
+        read_snp2hla_dosage(dosage, fam, "HLA_DRB1_0401")
+
+    r2 = tmp_path / "bad.bgl.r2"
+    r2.write_text("HLA_DRB1_0101\t0.91\nHLA_A_0101\tNaN\nHLA_B_0702\tinf\n")
+    assert read_r2(r2) == {"HLA_DRB1_0101": 0.91}
+
+
+@pytest.mark.parametrize(
+    "bad_dosage", [float("nan"), float("inf"), float("-inf"), -0.05, 2.05]
+)
+def test_reporter_rejects_invalid_dosages(bad_dosage: float) -> None:
+    reporter = ClinicalReporter()
+    with pytest.raises(ValueError, match="dosage must be finite"):
+        reporter.report_from_dosages({"S1": bad_dosage}, "HLA_DRB1_0101")
+
+
+def test_reporter_accepts_tiny_rounding_tolerance() -> None:
+    reporter = ClinicalReporter()
+    report = reporter.report_from_dosages(
+        {"S1": -1e-5, "S2": 2.0 + 1e-5}, "HLA_DRB1_0101"
+    )
+    calls = {g.participant_id: g.call for g in report.genotypes}
+    assert calls == {"S1": "negative", "S2": "homozygous"}
+
+
+def test_read_snp2hla_rejects_malformed_fam(tmp_path: Path) -> None:
+    dosage = tmp_path / "out.dosage"
+    fam = tmp_path / "bad.fam"
+    fam.write_text("ONLY_ONE_COL\n")
+    dosage.write_text("HLA_DRB1_0401\tP\tA\t1.0\n")
+    with pytest.raises(ValueError, match="at least 2 columns"):
+        read_snp2hla_dosage(dosage, fam, "HLA_DRB1_0401")

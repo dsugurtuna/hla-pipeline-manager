@@ -1,6 +1,6 @@
 """HLA Pipeline Manager: plan, verify and deploy SNP2HLA imputation batches."""
 
-__version__ = "2.0.0"
+__version__ = "0.1.0"
 
 from .deployer import DeploymentReport, ResultDeployer
 from .executor import BatchExecutor, ExecutionPlan, ExecutionResult, PipelineConfig

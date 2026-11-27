@@ -18,6 +18,7 @@ adenine for ordinary SNPs.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 PRESENT = "P"
@@ -28,6 +29,15 @@ def _orient(marker: str, counted_allele: str, value: float) -> float:
     if marker.startswith("HLA_") and counted_allele == ABSENT:
         return 2.0 - value
     return value
+
+
+def _parse_dosage_value(raw: str, marker: str, sample_id: str) -> float:
+    val = float(raw)
+    if not math.isfinite(val):
+        raise ValueError(
+            f"{marker}: non-finite dosage value {raw!r} for sample {sample_id!r}"
+        )
+    return val
 
 
 def find_raw_column(header: list[str], marker: str) -> tuple[int, str]:
@@ -59,16 +69,27 @@ def read_plink_raw(path: str | Path, marker: str) -> dict[str, float]:
         out: dict[str, float] = {}
         for line in fh:
             parts = line.split()
-            if len(parts) <= col or parts[col] == "NA":
+            if len(parts) <= max(col, iid_col) or parts[col].upper() == "NA":
                 continue
-            out[parts[iid_col]] = _orient(marker, allele, float(parts[col]))
+            val = _parse_dosage_value(parts[col], marker, parts[iid_col])
+            out[parts[iid_col]] = _orient(marker, allele, val)
     return out
 
 
 def read_fam_iids(fam_path: str | Path) -> list[str]:
     """Return the IIDs (column 2) of a PLINK .fam file, in order."""
+    iids: list[str] = []
     with open(fam_path) as fh:
-        return [line.split()[1] for line in fh if line.strip()]
+        for line_no, line in enumerate(fh, start=1):
+            if not line.strip():
+                continue
+            parts = line.split()
+            if len(parts) < 2:
+                raise ValueError(
+                    f"{fam_path}:{line_no}: expected at least 2 columns in .fam"
+                )
+            iids.append(parts[1])
+    return iids
 
 
 def read_snp2hla_dosage(
@@ -77,13 +98,14 @@ def read_snp2hla_dosage(
     """Return ``{IID: dosage of the present allele}`` from a SNP2HLA .dosage.
 
     ``fam_path`` must be the .fam written by the same SNP2HLA run, because the
-    dosage columns carry no sample IDs.
+    dosage columns carry no sample IDs. Samples with a missing value (``NA``)
+    are omitted.
     """
     iids = read_fam_iids(fam_path)
     with open(dosage_path) as fh:
         for line in fh:
             parts = line.split()
-            if not parts or parts[0] != marker:
+            if len(parts) < 3 or parts[0] != marker:
                 continue
             allele1 = parts[1]
             values = parts[3:]
@@ -92,18 +114,21 @@ def read_snp2hla_dosage(
                     f"{marker}: {len(values)} dosage values but {len(iids)} "
                     "samples in the .fam file"
                 )
-            return {
-                iid: _orient(marker, allele1, float(v))
-                for iid, v in zip(iids, values, strict=True)
-            }
+            out: dict[str, float] = {}
+            for iid, raw in zip(iids, values, strict=True):
+                if raw.upper() == "NA":
+                    continue
+                val = _parse_dosage_value(raw, marker, iid)
+                out[iid] = _orient(marker, allele1, val)
+            return out
     raise KeyError(f"marker {marker!r} not found in {dosage_path}")
 
 
 def read_r2(path: str | Path) -> dict[str, float]:
     """Parse a Beagle ``.bgl.r2`` file into ``{marker: r2}``.
 
-    Non-numeric values (for example ``NaN`` for monomorphic markers in older
-    Beagle versions) are skipped.
+    Non-numeric or non-finite values (for example ``NaN`` for monomorphic
+    markers in older Beagle versions) are skipped.
     """
     scores: dict[str, float] = {}
     with open(path) as fh:
@@ -115,6 +140,6 @@ def read_r2(path: str | Path) -> dict[str, float]:
                 value = float(parts[1])
             except ValueError:
                 continue
-            if value == value:  # drop NaN
+            if math.isfinite(value):
                 scores[parts[0]] = value
     return scores

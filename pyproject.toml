@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hla-pipeline-manager"
-version = "2.0.0"
+version = "0.1.0"
 description = "Plan, verify and deploy SNP2HLA imputation batches."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,14 +12,25 @@ license = {text = "MIT"}
 authors = [{name = "Ugur Tuna"}]
 dependencies = []
 
+[project.scripts]
+hla-pipeline = "hla_pipeline.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/dsugurtuna/hla-pipeline-manager"
+Repository = "https://github.com/dsugurtuna/hla-pipeline-manager"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff==0.16.9", "mypy>=1.11"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+hla_pipeline = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.ruff]
 target-version = "py311"

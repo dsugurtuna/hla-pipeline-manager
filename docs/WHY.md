@@ -6,7 +6,7 @@ HLA imputation of a large cohort is thousands of small SNP2HLA runs, and any one
 
 ## Design choices
 
-**Why separate planning from running?** Because a plan can be read, reviewed and tested without PLINK, Java or a reference panel, and because "what would run" and "what did run" must never be confused. An earlier version returned a 100% success rate for work it had not done.
+**Why separate planning from running?** Because a plan can be read, reviewed and tested without PLINK, Java or a reference panel, and because "what would run" and "what did run" must never be confused. Naive batch wrappers often conflate emitting commands with execution success; here, dry runs never mutate disk by default and always report a 0.0 success rate until a runner exits 0.
 
 **Why an injectable runner instead of calling `subprocess` directly?** Because the interesting logic is failure handling: stop a sub-batch at its first failed command, stop everything if a shared step fails. A fake runner tests that in milliseconds.
 
@@ -20,7 +20,7 @@ HLA imputation of a large cohort is thousands of small SNP2HLA runs, and any one
 
 **Why verify by SHA-256 rather than "the file exists"?** Because a truncated copy exists too. A checksum compares what arrived with what was sent.
 
-**Why is deployment not a CLI command?** Because it is the only operation that overwrites release data. Planning, verifying and reporting read or write local outputs; deployment has to be called deliberately from code, backs up first and checks every copy.
+**Why is deployment not a CLI command?** Because it is the only operation that overwrites release data. Planning, verifying and reporting read or write local outputs; deployment has to be called deliberately from code, gates on verification, backs up first, copies atomically, rolls back on checksum mismatch and writes `SHA256SUMS.tsv`.
 
 ## Questions worth asking
 

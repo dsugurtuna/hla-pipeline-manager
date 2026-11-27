@@ -16,13 +16,29 @@ without PLINK, Java or a reference panel installed.
 from __future__ import annotations
 
 import csv
+import math
+import re
 import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+_BATCH_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
 Runner = Callable[[list[str]], int]
 """Runs one command (argv list) and returns its exit code."""
+
+
+def _validate_batch_id(batch_id: str) -> str:
+    if (
+        not _BATCH_ID_RE.fullmatch(batch_id)
+        or batch_id in {".", ".."}
+        or ".." in batch_id
+    ):
+        raise ValueError(
+            f"Invalid batch_id {batch_id!r}: must match [A-Za-z0-9._-]+ without '..'"
+        )
+    return batch_id
 
 
 def subprocess_runner(argv: list[str]) -> int:
@@ -45,6 +61,18 @@ class PipelineConfig:
     # 2000 MB of Java heap and a Beagle window of 1000 markers.
     java_max_memory_mb: int = 2000
     marker_window_size: int = 1000
+
+    def __post_init__(self) -> None:
+        if self.sub_batch_size < 1:
+            raise ValueError("sub_batch_size must be at least 1")
+        if self.chromosome < 1:
+            raise ValueError("chromosome must be at least 1")
+        if self.mhc_start_bp < 0 or self.mhc_end_bp <= self.mhc_start_bp:
+            raise ValueError("need 0 <= mhc_start_bp < mhc_end_bp")
+        if self.java_max_memory_mb < 1:
+            raise ValueError("java_max_memory_mb must be at least 1")
+        if self.marker_window_size < 1:
+            raise ValueError("marker_window_size must be at least 1")
 
 
 @dataclass
@@ -123,14 +151,18 @@ class BatchExecutor:
         Keep files use the ``.keep`` extension so that PLINK writing
         ``sub_batch_001.fam`` can never overwrite its own input.
         """
-        batch_size = batch_size or self.config.sub_batch_size
+        if batch_size is None:
+            batch_size = self.config.sub_batch_size
         if batch_size < 1:
             raise ValueError("batch_size must be at least 1")
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
 
         with open(fam_path) as fh:
             samples = [line.strip() for line in fh if line.strip()]
+        if not samples:
+            raise ValueError(f"Input .fam file contains no samples: {fam_path}")
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         keep_files: list[Path] = []
         for i in range(0, len(samples), batch_size):
@@ -189,20 +221,27 @@ class BatchExecutor:
         bfile: str | Path,
         work_dir: str | Path,
         rename_file: str | Path | None = None,
+        write_files: bool = True,
     ) -> ExecutionPlan:
         """Build the full command plan for one batch.
 
         Parameters
         ----------
         batch_id : str
-            Label used in output file names.
+            Label used in output file names. Must match ``[A-Za-z0-9._-]+``
+            and contain no ``..``.
         bfile : path
             PLINK binary fileset prefix (``<bfile>.bed/.bim/.fam``).
         work_dir : path
             Directory for intermediate and output files.
         rename_file : path, optional
             Two-column ``old new`` file (see :meth:`write_rename_file`).
+        write_files : bool, default True
+            When True, materialise ``.keep`` files and the ``sub_batches``
+            output directory. Set to False for non-mutating command
+            inspection / dry runs.
         """
+        _validate_batch_id(batch_id)
         cfg = self.config
         if not cfg.reference_panel:
             raise ValueError("PipelineConfig.reference_panel must be set")
@@ -210,7 +249,11 @@ class BatchExecutor:
         bfile = str(bfile)
         fam = Path(bfile + ".fam")
 
-        plan = ExecutionPlan(batch_id=batch_id, total_samples=self.count_samples(fam))
+        total_samples = self.count_samples(fam)
+        if total_samples == 0:
+            raise ValueError(f"Input .fam file contains no samples: {fam}")
+
+        plan = ExecutionPlan(batch_id=batch_id, total_samples=total_samples)
 
         mhc = str(work / f"{batch_id}_mhc")
         plan.shared_steps.append(
@@ -256,10 +299,18 @@ class BatchExecutor:
 
         # Region filtering removes variants, never samples, so the input .fam
         # defines the sub-batches before any tool has run.
-        keep_files = self.split_fam(fam, work / "keep")
+        keep_dir = work / "keep"
         sub_dir = work / "sub_batches"
-        # PLINK does not create missing output directories.
-        sub_dir.mkdir(parents=True, exist_ok=True)
+        if write_files:
+            keep_files = self.split_fam(fam, keep_dir)
+            # PLINK does not create missing output directories.
+            sub_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            n_batches = math.ceil(total_samples / cfg.sub_batch_size)
+            keep_files = [
+                keep_dir / f"sub_batch_{idx:03d}.keep"
+                for idx in range(1, n_batches + 1)
+            ]
         for keep in keep_files:
             name = keep.stem
             sub_prefix = str(sub_dir / name)
@@ -321,13 +372,17 @@ class BatchExecutor:
         rename_file: str | Path | None = None,
         dry_run: bool = True,
         runner: Runner | None = None,
+        write_files: bool | None = None,
     ) -> ExecutionResult:
         """Plan a batch and, unless ``dry_run`` is True, run it.
 
-        A dry run returns the planned commands with ``completed == 0``: it
-        reports what would happen, not what did.
+        A dry run does not mutate ``work_dir`` by default and returns the
+        planned commands with ``completed == 0``.
         """
-        plan = self.plan_batch(batch_id, bfile, work_dir, rename_file)
+        should_write = (not dry_run) if write_files is None else write_files
+        plan = self.plan_batch(
+            batch_id, bfile, work_dir, rename_file, write_files=should_write
+        )
         if dry_run:
             return ExecutionResult(
                 batch_id=batch_id,

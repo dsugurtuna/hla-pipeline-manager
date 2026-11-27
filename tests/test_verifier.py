@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from hla_pipeline.verifier import ImputationVerifier
+from hla_pipeline.verifier import ImputationVerifier, VerificationReport
 
 
 def _write_outputs(prefix: Path, *, log: str = "Analysis finished.\n") -> None:
@@ -82,3 +82,66 @@ def test_expected_sub_batches_detects_missing(complete_sub_batch: Path) -> None:
     assert report.missing_sub_batches("b1") == 2
     assert not report.all_ok
     assert "MISSING: 2" in verifier.format_report(report)
+
+
+def test_empty_verification_report_is_not_all_ok() -> None:
+    assert not VerificationReport().all_ok
+
+
+def test_verify_batch_empty_dir_fails_closed(tmp_path: Path) -> None:
+    verifier = ImputationVerifier()
+    report = verifier.verify_batch(tmp_path, batch_id="empty")
+    assert report.total_sub_batches == 0
+    assert not report.all_ok
+    assert "NO OUTPUTS" in verifier.format_report(report)
+
+
+def test_verify_batch_missing_dir_raises(tmp_path: Path) -> None:
+    with pytest.raises(NotADirectoryError):
+        ImputationVerifier().verify_batch(tmp_path / "does_not_exist")
+
+
+def test_verify_batch_invalid_expected_raises(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="expected_sub_batches"):
+        ImputationVerifier().verify_batch(tmp_path, expected_sub_batches=0)
+
+
+@pytest.mark.parametrize(
+    "log_text",
+    [
+        "Job not finished\n",
+        "completed 0 markers\n",
+        "Analysis unfinished\n",
+        "Error: job finished unexpectedly\n",
+        "Analysis finished.\njava.lang.OutOfMemoryError\n",
+        "finished with 1 error\n",
+        "Exception in thread main: finished early\n",
+    ],
+)
+def test_beagle_log_rejects_negation_and_error_lines(
+    tmp_path: Path, log_text: str
+) -> None:
+    prefix = tmp_path / "sub_err"
+    _write_outputs(prefix, log=log_text)
+    status = ImputationVerifier().verify_sub_batch(prefix)
+    assert not status.beagle_completed
+    assert not status.is_complete
+
+
+@pytest.mark.parametrize(
+    "log_text",
+    [
+        "Analysis finished.\n",
+        "Beagle run (synthetic example log)\nfinished\n",
+        "End time: 2026-11-22 12:00:00 UTC\n",
+        "0 errors\nBeagle completed successfully\n",
+    ],
+)
+def test_beagle_log_accepts_clean_completion_lines(
+    tmp_path: Path, log_text: str
+) -> None:
+    prefix = tmp_path / "sub_ok"
+    _write_outputs(prefix, log=log_text)
+    status = ImputationVerifier().verify_sub_batch(prefix)
+    assert status.beagle_completed
+    assert status.is_complete

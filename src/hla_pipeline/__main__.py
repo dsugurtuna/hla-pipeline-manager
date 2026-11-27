@@ -1,6 +1,6 @@
-"""Command-line interface: ``python -m hla_pipeline <command>``.
+"""Command-line interface: ``hla-pipeline <command>`` or ``python -m hla_pipeline``.
 
-Commands only plan, read and report. Deployment (which overwrites release
+Commands only plan, verify and report. Deployment (which overwrites release
 files) is deliberately left to the Python API, where it has to be called on
 purpose.
 """
@@ -46,9 +46,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
-
+def _run_command(args: argparse.Namespace) -> int:
     if args.command == "plan":
         config = PipelineConfig(
             reference_panel=args.reference, sub_batch_size=args.sub_batch_size
@@ -65,9 +63,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "verify":
+        if (args.samples is None) != (args.size is None):
+            raise ValueError("--samples and --size must be provided together")
         expected = args.expected
-        if expected is None and args.samples and args.size:
-            expected = math.ceil(args.samples / args.size)
+        if args.samples is not None:
+            if args.samples < 1 or args.size < 1:
+                raise ValueError("--samples and --size must be at least 1")
+            if expected is None:
+                expected = math.ceil(args.samples / args.size)
         verifier = ImputationVerifier()
         vreport = verifier.verify_batch(args.batch_dir, expected_sub_batches=expected)
         print(verifier.format_report(vreport))
@@ -93,6 +96,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    try:
+        return _run_command(args)
+    except (FileNotFoundError, NotADirectoryError, ValueError, KeyError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

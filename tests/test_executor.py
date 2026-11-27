@@ -129,3 +129,72 @@ def test_build_rename_map_skips_unmapped(tmp_path: Path) -> None:
     annot = tmp_path / "annot.csv"
     annot.write_text("probesetid,rsid\nAX-1,rs10\nAX-2,---\nAX-3,rs30\n")
     assert BatchExecutor().build_rename_map(annot) == {"AX-1": "rs10", "AX-3": "rs30"}
+
+
+@pytest.mark.parametrize("bad_size", [0, -1, -5])
+def test_split_fam_rejects_non_positive_batch_size(
+    bfile: Path, tmp_path: Path, bad_size: int
+) -> None:
+    with pytest.raises(ValueError, match="batch_size must be at least 1"):
+        _executor().split_fam(
+            str(bfile) + ".fam", tmp_path / "keep", batch_size=bad_size
+        )
+
+
+def test_pipeline_config_rejects_invalid_values() -> None:
+    with pytest.raises(ValueError, match="sub_batch_size"):
+        PipelineConfig(sub_batch_size=0)
+    with pytest.raises(ValueError, match="chromosome"):
+        PipelineConfig(chromosome=0)
+    with pytest.raises(ValueError, match="mhc_start_bp"):
+        PipelineConfig(mhc_start_bp=35_000_000, mhc_end_bp=34_000_000)
+    with pytest.raises(ValueError, match="java_max_memory_mb"):
+        PipelineConfig(java_max_memory_mb=0)
+    with pytest.raises(ValueError, match="marker_window_size"):
+        PipelineConfig(marker_window_size=0)
+
+
+@pytest.mark.parametrize(
+    "bad_id", ["", ".", "..", "../escape", "a/b", "batch 1", "a..b"]
+)
+def test_plan_batch_rejects_invalid_batch_id(
+    bfile: Path, tmp_path: Path, bad_id: str
+) -> None:
+    with pytest.raises(ValueError, match="Invalid batch_id"):
+        _executor().plan_batch(bad_id, bfile, tmp_path / "work", write_files=False)
+
+
+def test_plan_batch_allows_dotted_batch_id(bfile: Path, tmp_path: Path) -> None:
+    plan = _executor().plan_batch(
+        "b28.sub_001", bfile, tmp_path / "work", write_files=False
+    )
+    assert plan.batch_id == "b28.sub_001"
+
+
+def test_plan_batch_write_files_false_does_not_mutate_disk(
+    bfile: Path, tmp_path: Path
+) -> None:
+    work_ro = tmp_path / "work_ro"
+    work_rw = tmp_path / "work_rw"
+    plan_ro = _executor().plan_batch("b01", bfile, work_ro, write_files=False)
+    plan_rw = _executor().plan_batch("b01", bfile, work_rw, write_files=True)
+    assert not work_ro.exists()
+    assert work_rw.is_dir()
+    assert len(plan_ro.commands) == len(plan_rw.commands)
+    assert list(plan_ro.sub_batch_steps) == list(plan_rw.sub_batch_steps)
+
+
+def test_execute_batch_dry_run_does_not_mutate_disk(
+    bfile: Path, tmp_path: Path
+) -> None:
+    work = tmp_path / "dry_work"
+    result = _executor().execute_batch("b01", bfile, work, dry_run=True)
+    assert result.dry_run
+    assert not work.exists()
+
+
+def test_plan_batch_rejects_empty_fam(tmp_path: Path) -> None:
+    prefix = tmp_path / "empty"
+    Path(f"{prefix}.fam").write_text("\n")
+    with pytest.raises(ValueError, match="no samples"):
+        _executor().plan_batch("b01", prefix, tmp_path / "work", write_files=False)
